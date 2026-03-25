@@ -52,7 +52,8 @@
   var raw = match[1];
   
   try {
-    var jsonStr = atob(raw);
+    // 修复UTF-8编码问题
+    var jsonStr = decodeURIComponent(escape(atob(raw)));
     var data = JSON.parse(jsonStr);
     
     var title = data.id || data.label || '风管加工料单';
