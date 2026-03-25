@@ -48,7 +48,7 @@
 </div>
 
 <script>
-// 从URL获取数据并显示
+// 从URL获取编号，从localStorage查询数据
 (function() {
   const params = new URLSearchParams(window.location.search);
   const d = params.get('d');
@@ -65,10 +65,24 @@
       return;
     }
     
-    // 直接显示数据
-    showResult(data);
+    // 从localStorage查询
+    const allData = localStorage.getItem('ductQrData');
+    if (!allData) {
+      showError('暂无数据。请先在主页面生成二维码。');
+      return;
+    }
+    
+    const dataList = JSON.parse(allData);
+    const found = dataList.find(row => row.label === data.id);
+    
+    if (!found) {
+      showError('未找到编号: ' + data.id);
+      return;
+    }
+    
+    showResult(found);
   } catch(e) {
-    showError('二维码解析失败: ' + e.message);
+    showError('查询失败: ' + e.message);
   }
 })();
 
@@ -77,11 +91,11 @@ function showResult(data) {
   document.getElementById('error').classList.remove('show');
   
   const result = document.getElementById('result');
-  document.getElementById('resultTitle').textContent = data.id;
+  document.getElementById('resultTitle').textContent = data.label;
   
   let html = '';
-  if (data.data && Array.isArray(data.data)) {
-    for (let f of data.data) {
+  if (data.rowData && Array.isArray(data.rowData)) {
+    for (let f of data.rowData) {
       const k = f.k || f.label || '';
       const v = f.v || f.value || '-';
       html += '<div class="row"><div class="label">' + k + '</div><div class="value">' + v + '</div></div>';
