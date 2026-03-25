@@ -67,7 +67,8 @@
     
     // 从服务器查询
     const recordId = data.id.replace(/\//g, '_').replace(/\s+/g, '_');
-    fetch('/api/query?id=' + encodeURIComponent(recordId))
+    const apiUrl = window.location.origin + '/api/query?id=' + encodeURIComponent(recordId);
+    fetch(apiUrl)
       .then(res => res.json())
       .then(result => {
         if (result.success) {
