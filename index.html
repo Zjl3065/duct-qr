@@ -70,6 +70,15 @@
         var v = colonIdx > 0 ? item.substring(colonIdx + 1) : item;
         html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
       }
+    } else if (data.d && typeof data.d === 'string') {
+      // 新格式：编号|字段1:值1|字段2:值2|...
+      var parts = data.d.split('|');
+      for (var k = 0; k < parts.length; k++) {
+        var colonIdx = parts[k].indexOf(':');
+        var label = colonIdx > 0 ? parts[k].substring(0, colonIdx) : '字段' + (k + 1);
+        var val = colonIdx > 0 ? parts[k].substring(colonIdx + 1) : parts[k];
+        html += '<div class="row"><div class="lbl">' + label + '</div><div class="val">' + val + '</div></div>';
+      }
     } else if (data.fields && Array.isArray(data.fields)) {
       for (var j = 0; j < data.fields.length; j++) {
         var f = data.fields[j];
