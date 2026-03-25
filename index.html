@@ -12,10 +12,6 @@
   .header h1{font-size:20px;margin-bottom:6px}
   .header .sub{font-size:14px;opacity:0.9}
   .content{padding:30px}
-  .search-box{display:flex;gap:10px;margin-bottom:20px}
-  .search-box input{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:16px}
-  .search-box button{padding:12px 24px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px}
-  .search-box button:hover{background:#5568d3}
   .result{margin-top:20px;display:none}
   .result.show{display:block}
   .result-title{font-size:18px;color:#333;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #667eea}
@@ -25,7 +21,7 @@
   .value{flex:1;color:#222;font-size:15px;font-weight:500;word-break:break-all}
   .error{color:#e74c3c;padding:20px;text-align:center;background:#ffe8e8;border-radius:8px;display:none}
   .error.show{display:block}
-  .loading{color:#888;text-align:center;padding:20px;display:none}
+  .loading{color:#888;text-align:center;padding:40px;display:none}
   .loading.show{display:block}
   .footer{text-align:center;padding:20px;color:#bbb;font-size:12px;border-top:1px solid #f0f0f0}
 </style>
@@ -35,15 +31,10 @@
   <div class="card">
     <div class="header">
       <h1>🏭 风管加工料单</h1>
-      <div class="sub">扫码或输入编号查询</div>
+      <div class="sub">扫描二维码查询详情</div>
     </div>
     
     <div class="content">
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="输入项目编号或扫描二维码" autofocus>
-        <button onclick="search()">查询</button>
-      </div>
-      
       <div class="loading" id="loading">加载中...</div>
       <div class="error" id="error"></div>
       <div class="result" id="result">
@@ -57,31 +48,35 @@
 </div>
 
 <script>
-// 从URL获取初始编号
+// 从URL获取编号并自动查询
 (function() {
   const params = new URLSearchParams(window.location.search);
   const d = params.get('d');
-  if (d) {
-    try {
-      const data = JSON.parse(decodeURIComponent(escape(atob(d))));
-      if (data.id) {
-        document.getElementById('searchInput').value = data.id;
-        search();
-      }
-    } catch(e) {
-      console.log('URL decode error:', e.message);
-    }
-  }
-})();
-
-function search() {
-  const input = document.getElementById('searchInput').value.trim();
-  if (!input) {
-    showError('请输入项目编号');
+  
+  if (!d) {
+    showError('无效的二维码');
     return;
   }
   
-  // 从localStorage获取数据（由主页面存储）
+  try {
+    const data = JSON.parse(decodeURIComponent(escape(atob(d))));
+    if (!data.id) {
+      showError('二维码数据格式错误');
+      return;
+    }
+    
+    // 自动查询
+    search(data.id);
+  } catch(e) {
+    showError('二维码解析失败: ' + e.message);
+  }
+})();
+
+function search(projectId) {
+  document.getElementById('loading').classList.add('show');
+  document.getElementById('error').classList.remove('show');
+  
+  // 从localStorage获取数据
   const allData = localStorage.getItem('ductQrData');
   if (!allData) {
     showError('暂无数据。请先在主页面生成二维码。');
@@ -90,29 +85,29 @@ function search() {
   
   try {
     const data = JSON.parse(allData);
-    const found = data.find(row => row.label === input);
+    const found = data.find(row => row.label === projectId);
     
     if (!found) {
-      showError('未找到编号: ' + input);
+      showError('未找到编号: ' + projectId);
       return;
     }
     
     showResult(found);
   } catch(e) {
-    showError('数据格式错误: ' + e.message);
+    showError('数据查询失败: ' + e.message);
   }
 }
 
 function showResult(data) {
-  document.getElementById('error').classList.remove('show');
   document.getElementById('loading').classList.remove('show');
+  document.getElementById('error').classList.remove('show');
   
   const result = document.getElementById('result');
   document.getElementById('resultTitle').textContent = data.label;
   
   let html = '';
-  if (data.fields && Array.isArray(data.fields)) {
-    for (let f of data.fields) {
+  if (data.rowData && Array.isArray(data.rowData)) {
+    for (let f of data.rowData) {
       const k = f.k || f.label || '';
       const v = f.v || f.value || '-';
       html += '<div class="row"><div class="label">' + k + '</div><div class="value">' + v + '</div></div>';
@@ -124,17 +119,12 @@ function showResult(data) {
 }
 
 function showError(msg) {
-  document.getElementById('result').classList.remove('show');
   document.getElementById('loading').classList.remove('show');
+  document.getElementById('result').classList.remove('show');
   const error = document.getElementById('error');
   error.textContent = msg;
   error.classList.add('show');
 }
-
-// 回车搜索
-document.getElementById('searchInput').addEventListener('keypress', function(e) {
-  if (e.key === 'Enter') search();
-});
 </script>
 </body>
 </html>
