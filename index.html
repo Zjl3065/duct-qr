@@ -2,7 +2,6 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>风管加工料单</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -17,6 +16,7 @@
   .val{flex:1;color:#222;font-size:15px;font-weight:500;word-break:break-all}
   .footer{text-align:center;padding:12px;color:#bbb;font-size:12px}
   .error{text-align:center;padding:40px;color:#e74c3c}
+  .loading{text-align:center;padding:40px;color:#888}
 </style>
 </head>
 <body>
@@ -25,67 +25,68 @@
     <h1>🏭 风管加工料单</h1>
     <div class="sub" id="title">加载中...</div>
   </div>
-  <div id="rows"></div>
+  <div id="rows"><div class="loading">正在加载...</div></div>
   <div class="footer">风管加工料单系统</div>
 </div>
 
 <script>
+// 解析URL参数
 (function() {
-  var params = new URLSearchParams(window.location.search);
-  var raw = params.get('d');
+  var titleEl = document.getElementById('title');
+  var rowsEl = document.getElementById('rows');
   
-  if (!raw) {
-    document.getElementById('title').textContent = '无数据';
-    document.getElementById('rows').innerHTML = '<div class="error">二维码数据为空</div>';
+  var params = window.location.search;
+  if (!params || params.length < 3) {
+    titleEl.textContent = '无数据';
+    rowsEl.innerHTML = '<div class="error">二维码数据为空</div>';
     return;
   }
   
-  // 解码：直接base64
-  var data;
+  var match = params.match(/[?&]d=([^&]+)/);
+  if (!match) {
+    titleEl.textContent = '无数据';
+    rowsEl.innerHTML = '<div class="error">未找到数据参数</div>';
+    return;
+  }
+  
+  var raw = match[1];
+  
   try {
-    data = JSON.parse(atob(raw));
-  } catch(e) {
-    document.getElementById('title').textContent = '数据解析失败';
-    document.getElementById('rows').innerHTML = '<div class="error">数据格式错误</div>';
-    return;
-  }
-  
-  // 处理数据
-  var title = data.id || data.label || '风管加工料单';
-  var fields = [];
-  
-  if (data.info && Array.isArray(data.info)) {
-    // 新格式: {id, info: ["字段:值", ...]}
-    for (var i = 0; i < data.info.length; i++) {
-      var item = data.info[i];
-      var colonIdx = item.indexOf(':');
-      if (colonIdx > 0) {
-        fields.push({
-          k: item.substring(0, colonIdx),
-          v: item.substring(colonIdx + 1)
-        });
+    var jsonStr = atob(raw);
+    var data = JSON.parse(jsonStr);
+    
+    var title = data.id || data.label || '风管加工料单';
+    titleEl.textContent = title;
+    document.title = title;
+    
+    var html = '';
+    
+    if (data.info && Array.isArray(data.info)) {
+      for (var i = 0; i < data.info.length; i++) {
+        var item = data.info[i];
+        var colonIdx = item.indexOf(':');
+        var k = colonIdx > 0 ? item.substring(0, colonIdx) : '字段' + (i + 1);
+        var v = colonIdx > 0 ? item.substring(colonIdx + 1) : item;
+        html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
+      }
+    } else if (data.fields && Array.isArray(data.fields)) {
+      for (var j = 0; j < data.fields.length; j++) {
+        var f = data.fields[j];
+        var k = f.k || f.label || '';
+        var v = f.v || f.value || '-';
+        html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
       }
     }
-  } else if (data.fields && Array.isArray(data.fields)) {
-    // 旧格式: {label, fields: [{k,v}, ...]}
-    fields = data.fields;
-  }
-  
-  document.title = title;
-  document.getElementById('title').textContent = title;
-  
-  var rowsEl = document.getElementById('rows');
-  if (fields.length === 0) {
-    rowsEl.innerHTML = '<div class="error">暂无数据</div>';
-  } else {
-    var html = '';
-    for (var j = 0; j < fields.length; j++) {
-      var f = fields[j];
-      var k = f.k || f.label || '';
-      var v = f.v || f.value || '-';
-      html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
+    
+    if (html) {
+      rowsEl.innerHTML = html;
+    } else {
+      rowsEl.innerHTML = '<div class="error">暂无数据</div>';
     }
-    rowsEl.innerHTML = html;
+    
+  } catch(e) {
+    titleEl.textContent = '数据解析失败';
+    rowsEl.innerHTML = '<div class="error">数据格式错误: ' + e.message + '</div>';
   }
 })();
 </script>
