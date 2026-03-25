@@ -48,7 +48,7 @@
 </div>
 
 <script>
-// 从URL获取编号，从localStorage查询数据
+// 从URL获取编号，从服务器查询数据
 (function() {
   const params = new URLSearchParams(window.location.search);
   const d = params.get('d');
@@ -65,24 +65,20 @@
       return;
     }
     
-    // 从localStorage查询
-    const allData = localStorage.getItem('ductQrData');
-    if (!allData) {
-      showError('暂无数据。请先在主页面生成二维码。');
-      return;
-    }
-    
-    const dataList = JSON.parse(allData);
-    const found = dataList.find(row => row.label === data.id);
-    
-    if (!found) {
-      showError('未找到编号: ' + data.id);
-      return;
-    }
-    
-    showResult(found);
+    // 从服务器查询
+    const recordId = data.id.replace(/\//g, '_').replace(/\s+/g, '_');
+    fetch('/api/query?id=' + encodeURIComponent(recordId))
+      .then(res => res.json())
+      .then(result => {
+        if (result.success) {
+          showResult(result.data);
+        } else {
+          showError(result.error || '查询失败');
+        }
+      })
+      .catch(e => showError('网络错误: ' + e.message));
   } catch(e) {
-    showError('查询失败: ' + e.message);
+    showError('二维码解析失败: ' + e.message);
   }
 })();
 
