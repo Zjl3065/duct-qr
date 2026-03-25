@@ -62,7 +62,17 @@
     
     var html = '';
     
-    if (data.info && Array.isArray(data.info)) {
+    if (data.n && typeof data.n === 'string') {
+      // 最新格式：第一行是标题，后面每行是"字段:值"
+      var lines = data.n.split('\n');
+      title = lines[0] || '风管加工料单';
+      for (var i = 1; i < lines.length; i++) {
+        var colonIdx = lines[i].indexOf(':');
+        var k = colonIdx > 0 ? lines[i].substring(0, colonIdx) : lines[i];
+        var v = colonIdx > 0 ? lines[i].substring(colonIdx + 1) : '';
+        html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
+      }
+    } else if (data.info && Array.isArray(data.info)) {
       for (var i = 0; i < data.info.length; i++) {
         var item = data.info[i];
         var colonIdx = item.indexOf(':');
