@@ -48,7 +48,7 @@
 </div>
 
 <script>
-// 从URL获取编号并自动查询
+// 从URL获取数据并显示
 (function() {
   const params = new URLSearchParams(window.location.search);
   const d = params.get('d');
@@ -65,49 +65,23 @@
       return;
     }
     
-    // 自动查询
-    search(data.id);
+    // 直接显示数据
+    showResult(data);
   } catch(e) {
     showError('二维码解析失败: ' + e.message);
   }
 })();
-
-function search(projectId) {
-  document.getElementById('loading').classList.add('show');
-  document.getElementById('error').classList.remove('show');
-  
-  // 从localStorage获取数据
-  const allData = localStorage.getItem('ductQrData');
-  if (!allData) {
-    showError('暂无数据。请先在主页面生成二维码。');
-    return;
-  }
-  
-  try {
-    const data = JSON.parse(allData);
-    const found = data.find(row => row.label === projectId);
-    
-    if (!found) {
-      showError('未找到编号: ' + projectId);
-      return;
-    }
-    
-    showResult(found);
-  } catch(e) {
-    showError('数据查询失败: ' + e.message);
-  }
-}
 
 function showResult(data) {
   document.getElementById('loading').classList.remove('show');
   document.getElementById('error').classList.remove('show');
   
   const result = document.getElementById('result');
-  document.getElementById('resultTitle').textContent = data.label;
+  document.getElementById('resultTitle').textContent = data.id;
   
   let html = '';
-  if (data.rowData && Array.isArray(data.rowData)) {
-    for (let f of data.rowData) {
+  if (data.data && Array.isArray(data.data)) {
+    for (let f of data.data) {
       const k = f.k || f.label || '';
       const v = f.v || f.value || '-';
       html += '<div class="row"><div class="label">' + k + '</div><div class="value">' + v + '</div></div>';
