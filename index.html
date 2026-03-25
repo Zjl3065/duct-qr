@@ -5,28 +5,89 @@
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>风管加工料单</title>
 <style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:"Microsoft YaHei",sans-serif;background:#f0f2f5;min-height:100vh;padding:16px}
-.card{background:white;border-radius:12px;overflow:hidden;max-width:500px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,0.1)}
-.header{background:linear-gradient(135deg,#1a73e8,#6c5ce7);color:white;padding:20px;text-align:center}
-.header h1{font-size:18px;margin-bottom:6px}
-.header .sub{font-size:14px;opacity:0.9;word-break:break-all}
-.row{display:flex;padding:14px 16px;border-bottom:1px solid #f0f0f0;align-items:flex-start}
-.row:last-child{border-bottom:none}
-.lbl{flex:0 0 100px;color:#888;font-size:13px;padding-top:1px}
-.val{flex:1;color:#222;font-size:15px;font-weight:500;word-break:break-all}
-.footer{text-align:center;padding:12px;color:#bbb;font-size:12px}
-.error{text-align:center;padding:40px;color:#e74c3c}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:"Microsoft YaHei",sans-serif;background:#f0f2f5;min-height:100vh;padding:16px}
+  .card{background:white;border-radius:12px;overflow:hidden;max-width:500px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,0.1)}
+  .header{background:linear-gradient(135deg,#1a73e8,#6c5ce7);color:white;padding:20px;text-align:center}
+  .header h1{font-size:18px;margin-bottom:6px}
+  .header .sub{font-size:14px;opacity:0.9;word-break:break-all;max-width:100%}
+  .row{display:flex;padding:14px 16px;border-bottom:1px solid #f0f0f0;align-items:flex-start}
+  .row:last-child{border-bottom:none}
+  .lbl{flex:0 0 100px;color:#888;font-size:13px;padding-top:1px}
+  .val{flex:1;color:#222;font-size:15px;font-weight:500;word-break:break-all}
+  .footer{text-align:center;padding:12px;color:#bbb;font-size:12px}
+  .error{text-align:center;padding:40px;color:#e74c3c}
 </style>
 </head>
 <body>
 <div class="card" id="card">
-<div class="header"><h1>🏭 风管加工料单</h1><div class="sub" id="title">加载中...</div></div>
-<div id="rows"></div>
-<div class="footer">风管加工料单系统</div>
+  <div class="header">
+    <h1>🏭 风管加工料单</h1>
+    <div class="sub" id="title">加载中...</div>
+  </div>
+  <div id="rows"></div>
+  <div class="footer">风管加工料单系统</div>
 </div>
+
 <script>
-(function(){try{var p=new URLSearchParams(location.search);var r=p.get("d");if(!r){document.getElementById("title").textContent="无数据";document.getElementById("rows").innerHTML="<div class=error>二维码数据为空</div>";return}var d=JSON.parse(decodeURIComponent(atob(r)));document.title=d.label||"风管加工料单";document.getElementById("title").textContent=d.label||"";document.getElementById("rows").innerHTML=d.fields.map(function(f){return '<div class=row><div class=lbl>'+escHtml(f.k)+'</div><div class=val>'+escHtml(f.v||"-")+"</div></div>";}).join("");}catch(e){document.getElementById("title").textContent="数据解析失败";document.getElementById("rows").innerHTML="<div class=error>二维码数据格式错误</div>";}function escHtml(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");}})();
+(function() {
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const raw = params.get('d');
+    
+    if (!raw) {
+      document.getElementById('title').textContent = '无数据';
+      document.getElementById('rows').innerHTML = '<div class="error">二维码数据为空</div>';
+      return;
+    }
+    
+    // 尝试Base64解码
+    let data;
+    try {
+      const decoded = atob(raw);
+      data = JSON.parse(decoded);
+    } catch(e) {
+      // 尝试URL解码+Base64（旧格式）
+      const decoded = decodeURIComponent(atob(raw));
+      data = JSON.parse(decoded);
+    }
+    
+    // 处理简化格式 {id, n} 或完整格式 {label, fields}
+    let title, fields;
+    if (data.id) {
+      // 简化格式
+      title = data.id;
+      fields = (data.n || []).map(item => {
+        const parts = item.split(':');
+        return { k: parts[0], v: parts.slice(1).join(':') };
+      });
+    } else {
+      // 完整格式
+      title = data.label || '风管加工料单';
+      fields = data.fields || [];
+    }
+    
+    document.title = title;
+    document.getElementById('title').textContent = title;
+    
+    const rowsEl = document.getElementById('rows');
+    if (fields.length === 0) {
+      rowsEl.innerHTML = '<div class="error">暂无数据</div>';
+    } else {
+      rowsEl.innerHTML = fields.map(function(f) {
+        return '<div class="row"><div class="lbl">' + escHtml(f.k || f.label || '') + '</div><div class="val">' + escHtml(f.v || f.value || '-') + '</div></div>';
+      }).join('');
+    }
+    
+  } catch(e) {
+    document.getElementById('title').textContent = '数据解析失败';
+    document.getElementById('rows').innerHTML = '<div class="error">二维码数据格式错误: ' + escHtml(e.message) + '</div>';
+  }
+  
+  function escHtml(s) {
+    return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+})();
 </script>
 </body>
 </html>
