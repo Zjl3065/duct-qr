@@ -41,28 +41,33 @@
       return;
     }
     
-    // 尝试Base64解码
     let data;
     try {
-      const decoded = atob(raw);
-      data = JSON.parse(decoded);
+      data = JSON.parse(atob(raw));
     } catch(e) {
-      // 尝试URL解码+Base64（旧格式）
-      const decoded = decodeURIComponent(atob(raw));
-      data = JSON.parse(decoded);
+      try {
+        data = JSON.parse(decodeURIComponent(atob(raw)));
+      } catch(e2) {
+        document.getElementById('title').textContent = '数据解析失败';
+        document.getElementById('rows').innerHTML = '<div class="error">数据格式错误</div>';
+        return;
+      }
     }
     
-    // 处理简化格式 {id, n} 或完整格式 {label, fields}
+    // 处理新格式 {id, info} 或旧格式 {label, fields}
     let title, fields;
     if (data.id) {
-      // 简化格式
       title = data.id;
-      fields = (data.n || []).map(item => {
-        const parts = item.split(':');
-        return { k: parts[0], v: parts.slice(1).join(':') };
-      });
+      // info是 ["字段1:值1", "字段2:值2"] 格式
+      if (data.info && Array.isArray(data.info)) {
+        fields = data.info.map(item => {
+          const idx = item.indexOf(':');
+          return { k: item.substring(0, idx), v: item.substring(idx + 1) };
+        });
+      } else {
+        fields = [];
+      }
     } else {
-      // 完整格式
       title = data.label || '风管加工料单';
       fields = data.fields || [];
     }
@@ -81,7 +86,7 @@
     
   } catch(e) {
     document.getElementById('title').textContent = '数据解析失败';
-    document.getElementById('rows').innerHTML = '<div class="error">二维码数据格式错误: ' + escHtml(e.message) + '</div>';
+    document.getElementById('rows').innerHTML = '<div class="error">错误: ' + escHtml(e.message) + '</div>';
   }
   
   function escHtml(s) {
