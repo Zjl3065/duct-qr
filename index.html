@@ -2,113 +2,139 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>风管加工料单</title>
+<title>风管加工料单查询</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{font-family:"Microsoft YaHei",sans-serif;background:#f0f2f5;min-height:100vh;padding:16px}
-  .card{background:white;border-radius:12px;overflow:hidden;max-width:500px;margin:0 auto;box-shadow:0 2px 12px rgba(0,0,0,0.1)}
+  .container{max-width:600px;margin:0 auto}
+  .card{background:white;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.1)}
   .header{background:linear-gradient(135deg,#1a73e8,#6c5ce7);color:white;padding:20px;text-align:center}
-  .header h1{font-size:18px;margin-bottom:6px}
-  .header .sub{font-size:14px;opacity:0.9;word-break:break-all;max-width:100%}
-  .row{display:flex;padding:14px 16px;border-bottom:1px solid #f0f0f0;align-items:flex-start}
+  .header h1{font-size:20px;margin-bottom:6px}
+  .header .sub{font-size:14px;opacity:0.9}
+  .content{padding:30px}
+  .search-box{display:flex;gap:10px;margin-bottom:20px}
+  .search-box input{flex:1;padding:12px;border:2px solid #ddd;border-radius:8px;font-size:16px}
+  .search-box button{padding:12px 24px;background:#667eea;color:white;border:none;border-radius:8px;cursor:pointer;font-size:16px}
+  .search-box button:hover{background:#5568d3}
+  .result{margin-top:20px;display:none}
+  .result.show{display:block}
+  .result-title{font-size:18px;color:#333;margin-bottom:15px;padding-bottom:10px;border-bottom:2px solid #667eea}
+  .row{display:flex;padding:12px 0;border-bottom:1px solid #f0f0f0}
   .row:last-child{border-bottom:none}
-  .lbl{flex:0 0 100px;color:#888;font-size:13px;padding-top:1px}
-  .val{flex:1;color:#222;font-size:15px;font-weight:500;word-break:break-all}
-  .footer{text-align:center;padding:12px;color:#bbb;font-size:12px}
-  .error{text-align:center;padding:40px;color:#e74c3c}
-  .loading{text-align:center;padding:40px;color:#888}
+  .label{flex:0 0 120px;color:#666;font-size:14px}
+  .value{flex:1;color:#222;font-size:15px;font-weight:500;word-break:break-all}
+  .error{color:#e74c3c;padding:20px;text-align:center;background:#ffe8e8;border-radius:8px;display:none}
+  .error.show{display:block}
+  .loading{color:#888;text-align:center;padding:20px;display:none}
+  .loading.show{display:block}
+  .footer{text-align:center;padding:20px;color:#bbb;font-size:12px;border-top:1px solid #f0f0f0}
 </style>
 </head>
 <body>
-<div class="card" id="card">
-  <div class="header">
-    <h1>🏭 风管加工料单</h1>
-    <div class="sub" id="title">加载中...</div>
+<div class="container">
+  <div class="card">
+    <div class="header">
+      <h1>🏭 风管加工料单</h1>
+      <div class="sub">扫码或输入编号查询</div>
+    </div>
+    
+    <div class="content">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="输入项目编号或扫描二维码" autofocus>
+        <button onclick="search()">查询</button>
+      </div>
+      
+      <div class="loading" id="loading">加载中...</div>
+      <div class="error" id="error"></div>
+      <div class="result" id="result">
+        <div class="result-title" id="resultTitle"></div>
+        <div id="resultContent"></div>
+      </div>
+    </div>
+    
+    <div class="footer">风管加工料单系统</div>
   </div>
-  <div id="rows"><div class="loading">正在加载...</div></div>
-  <div class="footer">风管加工料单系统</div>
 </div>
 
 <script>
-// 解析URL参数
+// 从URL获取初始编号
 (function() {
-  var titleEl = document.getElementById('title');
-  var rowsEl = document.getElementById('rows');
-  
-  var params = window.location.search;
-  if (!params || params.length < 3) {
-    titleEl.textContent = '无数据';
-    rowsEl.innerHTML = '<div class="error">二维码数据为空</div>';
-    return;
-  }
-  
-  var match = params.match(/[?&]d=([^&]+)/);
-  if (!match) {
-    titleEl.textContent = '无数据';
-    rowsEl.innerHTML = '<div class="error">未找到数据参数</div>';
-    return;
-  }
-  
-  var raw = match[1];
-  
-  try {
-    // 修复UTF-8编码问题
-    var jsonStr = decodeURIComponent(escape(atob(raw)));
-    var data = JSON.parse(jsonStr);
-    
-    var title = data.id || data.label || '风管加工料单';
-    titleEl.textContent = title;
-    document.title = title;
-    
-    var html = '';
-    
-    if (data.n && typeof data.n === 'string') {
-      // 最新格式：第一行是标题，后面每行是"字段:值"
-      var lines = data.n.split('\n');
-      title = lines[0] || '风管加工料单';
-      for (var i = 1; i < lines.length; i++) {
-        var colonIdx = lines[i].indexOf(':');
-        var k = colonIdx > 0 ? lines[i].substring(0, colonIdx) : lines[i];
-        var v = colonIdx > 0 ? lines[i].substring(colonIdx + 1) : '';
-        html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
+  const params = new URLSearchParams(window.location.search);
+  const d = params.get('d');
+  if (d) {
+    try {
+      const data = JSON.parse(decodeURIComponent(escape(atob(d))));
+      if (data.id) {
+        document.getElementById('searchInput').value = data.id;
+        search();
       }
-    } else if (data.info && Array.isArray(data.info)) {
-      for (var i = 0; i < data.info.length; i++) {
-        var item = data.info[i];
-        var colonIdx = item.indexOf(':');
-        var k = colonIdx > 0 ? item.substring(0, colonIdx) : '字段' + (i + 1);
-        var v = colonIdx > 0 ? item.substring(colonIdx + 1) : item;
-        html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
-      }
-    } else if (data.d && typeof data.d === 'string') {
-      // 新格式：编号|字段1:值1|字段2:值2|...
-      var parts = data.d.split('|');
-      for (var k = 0; k < parts.length; k++) {
-        var colonIdx = parts[k].indexOf(':');
-        var label = colonIdx > 0 ? parts[k].substring(0, colonIdx) : '字段' + (k + 1);
-        var val = colonIdx > 0 ? parts[k].substring(colonIdx + 1) : parts[k];
-        html += '<div class="row"><div class="lbl">' + label + '</div><div class="val">' + val + '</div></div>';
-      }
-    } else if (data.fields && Array.isArray(data.fields)) {
-      for (var j = 0; j < data.fields.length; j++) {
-        var f = data.fields[j];
-        var k = f.k || f.label || '';
-        var v = f.v || f.value || '-';
-        html += '<div class="row"><div class="lbl">' + k + '</div><div class="val">' + v + '</div></div>';
-      }
+    } catch(e) {
+      console.log('URL decode error:', e.message);
     }
-    
-    if (html) {
-      rowsEl.innerHTML = html;
-    } else {
-      rowsEl.innerHTML = '<div class="error">暂无数据</div>';
-    }
-    
-  } catch(e) {
-    titleEl.textContent = '数据解析失败';
-    rowsEl.innerHTML = '<div class="error">数据格式错误: ' + e.message + '</div>';
   }
 })();
+
+function search() {
+  const input = document.getElementById('searchInput').value.trim();
+  if (!input) {
+    showError('请输入项目编号');
+    return;
+  }
+  
+  // 从localStorage获取数据（由主页面存储）
+  const allData = localStorage.getItem('ductQrData');
+  if (!allData) {
+    showError('暂无数据。请先在主页面生成二维码。');
+    return;
+  }
+  
+  try {
+    const data = JSON.parse(allData);
+    const found = data.find(row => row.label === input);
+    
+    if (!found) {
+      showError('未找到编号: ' + input);
+      return;
+    }
+    
+    showResult(found);
+  } catch(e) {
+    showError('数据格式错误: ' + e.message);
+  }
+}
+
+function showResult(data) {
+  document.getElementById('error').classList.remove('show');
+  document.getElementById('loading').classList.remove('show');
+  
+  const result = document.getElementById('result');
+  document.getElementById('resultTitle').textContent = data.label;
+  
+  let html = '';
+  if (data.fields && Array.isArray(data.fields)) {
+    for (let f of data.fields) {
+      const k = f.k || f.label || '';
+      const v = f.v || f.value || '-';
+      html += '<div class="row"><div class="label">' + k + '</div><div class="value">' + v + '</div></div>';
+    }
+  }
+  
+  document.getElementById('resultContent').innerHTML = html;
+  result.classList.add('show');
+}
+
+function showError(msg) {
+  document.getElementById('result').classList.remove('show');
+  document.getElementById('loading').classList.remove('show');
+  const error = document.getElementById('error');
+  error.textContent = msg;
+  error.classList.add('show');
+}
+
+// 回车搜索
+document.getElementById('searchInput').addEventListener('keypress', function(e) {
+  if (e.key === 'Enter') search();
+});
 </script>
 </body>
 </html>
